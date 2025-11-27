@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
 from datetime import datetime
 from app.core.database import Base
 
@@ -14,6 +14,7 @@ class InventoryItem(Base):
     min_stock = Column(Integer, default=5)
     location = Column(String, nullable=True)
     attachments = Column(String, default="[]") # JSON string of URLs
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
