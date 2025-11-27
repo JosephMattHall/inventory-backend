@@ -2,3 +2,4 @@ pyenv
 __pycache__
 inventory.db
 make_admin.py
+/media/*.*
