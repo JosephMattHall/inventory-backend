@@ -28,6 +28,8 @@ class ItemUpdate(BaseModel):
 
 class ItemResponse(ItemBase):
     id: int
+    attachments: List[str] = []
+    qr_code_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

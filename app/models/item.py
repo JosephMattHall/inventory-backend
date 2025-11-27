@@ -14,6 +14,7 @@ class InventoryItem(Base):
     min_stock = Column(Integer, default=5)
     location = Column(String, nullable=True)
     attachments = Column(String, default="[]") # JSON string of URLs
+    qr_code_url = Column(String, nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)

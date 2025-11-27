@@ -6,8 +6,23 @@ from app.models.item import InventoryItem
 from app.models.user import User
 from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse
 import json
+import qrcode
+import os
+from uuid import uuid4
 
 router = APIRouter()
+
+def generate_qr_code(data: str, media_dir: str = "media") -> str:
+    filename = f"qr_{uuid4()}.png"
+    filepath = os.path.join(media_dir, filename)
+    
+    # Ensure directory exists
+    os.makedirs(media_dir, exist_ok=True)
+
+    img = qrcode.make(data)
+    img.save(filepath)
+
+    return filename
 
 # List items (scoped to user)
 @router.get("/items", response_model=list[ItemResponse])
@@ -43,8 +58,20 @@ def create_item(
     if "attachments" in item_data:
         item_data["attachments"] = json.dumps(item_data["attachments"])
     
+    # Generate QR Code
+    # We don't have the ID yet, so we'll commit first then update, OR we can just encode a placeholder and update, 
+    # BUT better to just encode the intended URL structure. 
+    # Actually, we need the ID for the URL. 
+    # Strategy: Create item -> flush to get ID -> generate QR -> update item -> commit.
+    
     item = InventoryItem(**item_data, owner_id=user.id)
     db.add(item)
+    db.flush() # Get ID
+    
+    qr_data = f"http://localhost:3000/inventory/{item.id}" # pointing to frontend detail page
+    qr_filename = generate_qr_code(qr_data)
+    item.qr_code_url = f"/media/{qr_filename}"
+    
     db.commit()
     db.refresh(item)
     return item
