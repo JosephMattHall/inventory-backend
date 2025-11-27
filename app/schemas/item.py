@@ -1,31 +1,45 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+from typing import Optional, List
 from datetime import datetime
+import json
 
 class ItemBase(BaseModel):
     name: str
     category: str = "Misc"
-    image_url: str | None = None
-    description: str | None = None
+    description: Optional[str] = None
     stock: int = 0
     min_stock: int = 5
-    location: str | None = None
+    location: Optional[str] = None
+    image_url: Optional[str] = None
+    attachments: List[str] = []
 
 class ItemCreate(ItemBase):
     pass
 
 class ItemUpdate(BaseModel):
-    name: str | None = None
-    category: str | None = None
-    image_url: str | None = None
-    description: str | None = None
-    stock: int | None = None
-    min_stock: int | None = None
-    location: str | None = None
+    name: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    stock: Optional[int] = None
+    min_stock: Optional[int] = None
+    location: Optional[str] = None
+    image_url: Optional[str] = None
+    attachments: Optional[List[str]] = None
 
 class ItemResponse(ItemBase):
     id: int
     created_at: datetime
     updated_at: datetime
 
+    @field_validator('attachments', mode='before')
+    @classmethod
+    def parse_attachments(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return []
+        return v or []
+
     class Config:
-        orm_mode = True
+        from_attributes = True

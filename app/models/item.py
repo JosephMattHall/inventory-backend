@@ -13,6 +13,7 @@ class InventoryItem(Base):
     stock = Column(Integer, default=0)
     min_stock = Column(Integer, default=5)
     location = Column(String, nullable=True)
+    attachments = Column(String, default="[]") # JSON string of URLs
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

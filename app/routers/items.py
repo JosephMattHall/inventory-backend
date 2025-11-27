@@ -21,13 +21,21 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
     return item
 
 # Admin only: create item
+import json
+
+# ...
+
 @router.post("/items", response_model=ItemResponse)
 def create_item(
     data: ItemCreate,
     db: Session = Depends(get_db),
     user: User = Depends(require_admin)
 ):
-    item = InventoryItem(**data.dict())
+    item_data = data.dict()
+    if "attachments" in item_data:
+        item_data["attachments"] = json.dumps(item_data["attachments"])
+    
+    item = InventoryItem(**item_data)
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -46,6 +54,8 @@ def update_item(
         raise HTTPException(404, "Item not found")
 
     for field, value in data.dict(exclude_unset=True).items():
+        if field == "attachments" and isinstance(value, list):
+            value = json.dumps(value)
         setattr(item, field, value)
 
     db.commit()
