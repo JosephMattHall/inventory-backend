@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+pymongo
+pydantic
+pydantic-settings
+sqlalchemy
+passlib[argon2]
+python-jose[cryptography]
+argon2-cffi
