@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.database import engine, Base
-from app.routers import auth, items, upload
+from app.routers import auth, items, upload, dashboard
 import os
 
 # Create tables (if not using Alembic)
@@ -27,3 +27,4 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(items.router)
 app.include_router(upload.router)
+app.include_router(dashboard.router)

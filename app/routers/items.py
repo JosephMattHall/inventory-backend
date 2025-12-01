@@ -4,6 +4,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.item import InventoryItem
 from app.models.user import User
+from app.models.activity import ActivityLog
 from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse
 import json
 import qrcode
@@ -58,12 +59,6 @@ def create_item(
     if "attachments" in item_data:
         item_data["attachments"] = json.dumps(item_data["attachments"])
     
-    # Generate QR Code
-    # We don't have the ID yet, so we'll commit first then update, OR we can just encode a placeholder and update, 
-    # BUT better to just encode the intended URL structure. 
-    # Actually, we need the ID for the URL. 
-    # Strategy: Create item -> flush to get ID -> generate QR -> update item -> commit.
-    
     item = InventoryItem(**item_data, owner_id=user.id)
     db.add(item)
     db.flush() # Get ID
@@ -71,6 +66,15 @@ def create_item(
     qr_data = f"http://localhost:3000/inventory/{item.id}" # pointing to frontend detail page
     qr_filename = generate_qr_code(qr_data)
     item.qr_code_url = f"/media/{qr_filename}"
+    
+    # Log Activity
+    log = ActivityLog(
+        user_id=user.id,
+        item_id=item.id,
+        action="CREATE",
+        details=f"Created item '{item.name}'"
+    )
+    db.add(log)
     
     db.commit()
     db.refresh(item)
@@ -96,6 +100,15 @@ def update_item(
             value = json.dumps(value)
         setattr(item, field, value)
 
+    # Log Activity
+    log = ActivityLog(
+        user_id=user.id,
+        item_id=item.id,
+        action="UPDATE",
+        details=f"Updated details for '{item.name}'"
+    )
+    db.add(log)
+
     db.commit()
     db.refresh(item)
     return item
@@ -115,6 +128,19 @@ def delete_item(
         raise HTTPException(404, "Item not found")
 
     db.delete(item)
+    
+    # Log Activity (item_id might be null if we wanted, but we'll keep it for history even if item is gone from DB, though FK might complain if we didn't cascade. For now, let's assume soft delete isn't implemented so this might fail if we don't handle FK. Actually, if we delete the item, the log with FK will fail unless we set null. Let's set item_id to None for delete log or rely on cascade. Wait, we defined FK as nullable=True in ActivityLog. So we should set it to None or keep it if DB allows. Let's set to None to be safe or just log the name.)
+    # Actually, let's just log it before delete? No, if delete commits, FK constraint might fail if not ON DELETE SET NULL.
+    # Let's assume standard behavior. We'll set item_id to None for the log to be safe.
+    
+    log = ActivityLog(
+        user_id=user.id,
+        item_id=None, # Item is deleted
+        action="DELETE",
+        details=f"Deleted item '{item.name}' (ID: {item_id})"
+    )
+    db.add(log)
+    
     db.commit()
     return {"message": "Item deleted"}
 
@@ -134,6 +160,16 @@ def add_stock(
         raise HTTPException(404, "Item not found")
 
     item.stock += amount
+    
+    # Log Activity
+    log = ActivityLog(
+        user_id=user.id,
+        item_id=item.id,
+        action="ADD_STOCK",
+        details=f"Added {amount} units. New stock: {item.stock}"
+    )
+    db.add(log)
+    
     db.commit()
     db.refresh(item)
     return item
@@ -157,6 +193,16 @@ def remove_stock(
         raise HTTPException(400, "Not enough stock")
 
     item.stock -= amount
+    
+    # Log Activity
+    log = ActivityLog(
+        user_id=user.id,
+        item_id=item.id,
+        action="REMOVE_STOCK",
+        details=f"Removed {amount} units. New stock: {item.stock}"
+    )
+    db.add(log)
+    
     db.commit()
     db.refresh(item)
     return item
