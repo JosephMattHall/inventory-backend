@@ -11,6 +11,7 @@ class ItemBase(BaseModel):
     min_stock: int = 5
     location: Optional[str] = None
     image_url: Optional[str] = None
+    manufacturer_part_number: Optional[str] = None
     attachments: List[str] = []
 
 class ItemCreate(ItemBase):
@@ -24,6 +25,7 @@ class ItemUpdate(BaseModel):
     min_stock: Optional[int] = None
     location: Optional[str] = None
     image_url: Optional[str] = None
+    manufacturer_part_number: Optional[str] = None
     attachments: Optional[List[str]] = None
 
 class ItemResponse(ItemBase):

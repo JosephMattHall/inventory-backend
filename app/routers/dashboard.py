@@ -10,6 +10,8 @@ from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
 
+from app.models.project import Project, ProjectStatus
+
 router = APIRouter()
 
 class ActivityLogResponse(BaseModel):
@@ -30,6 +32,7 @@ class DashboardStats(BaseModel):
     recent_items: List[dict]
     recent_activity: List[ActivityLogResponse]
     maintenance_items: List[dict]
+    active_projects: List[dict]
 
 @router.get("/dashboard/stats", response_model=DashboardStats)
 def get_dashboard_stats(
@@ -105,15 +108,42 @@ def get_dashboard_stats(
             "user_name": user.username
         })
 
-    # 6. Maintenance (Missing Images)
+    # 6. Maintenance (Missing Information)
+    # Check for missing image, description, or location
     maintenance_items = db.query(InventoryItem).filter(
         InventoryItem.owner_id == user.id,
-        (InventoryItem.image_url == None) | (InventoryItem.image_url == "")
+        (
+            (InventoryItem.image_url == None) | (InventoryItem.image_url == "") |
+            (InventoryItem.description == None) | (InventoryItem.description == "") |
+            (InventoryItem.location == None) | (InventoryItem.location == "")
+        )
     ).limit(10).all()
 
-    maintenance_data = [
-        {"id": item.id, "name": item.name}
-        for item in maintenance_items
+    maintenance_data = []
+    for item in maintenance_items:
+        missing = []
+        if not item.image_url:
+            missing.append("Image")
+        if not item.description:
+            missing.append("Description")
+        if not item.location:
+            missing.append("Location")
+            
+        maintenance_data.append({
+            "id": item.id, 
+            "name": item.name,
+            "missing_fields": missing
+        })
+
+    # 7. Active Projects
+    active_projects = db.query(Project).filter(
+        Project.owner_id == user.id,
+        Project.status == ProjectStatus.ACTIVE
+    ).limit(5).all()
+
+    active_projects_data = [
+        {"id": p.id, "title": p.title, "status": p.status, "items_count": len(p.items)}
+        for p in active_projects
     ]
 
     return {
@@ -122,5 +152,6 @@ def get_dashboard_stats(
         "most_used_items": most_used_data,
         "recent_items": recent_items_data,
         "recent_activity": activity_data,
-        "maintenance_items": maintenance_data
+        "maintenance_items": maintenance_data,
+        "active_projects": active_projects_data
     }
